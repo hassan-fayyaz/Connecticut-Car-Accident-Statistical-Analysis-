@@ -1,1 +1,1 @@
-# Connecticut-Car-Accident-Statistical-Analysis-
+# Connecticut Car Accident Statistical Analysis
