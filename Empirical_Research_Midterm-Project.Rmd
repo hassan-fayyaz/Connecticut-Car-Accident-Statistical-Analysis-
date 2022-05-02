@@ -1,0 +1,260 @@
+---
+title: "Midterm_Project_Empirical-Research"
+author: "Hassan Fayyaz | Adeel Arshid | Tanmay Thomas"
+date: "4/3/2022"
+Professor: "John Schmitz"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r Cleaning the environment}
+rm(list = ls(all = TRUE))
+```
+
+```{r Loading Packages}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(flexdashboard)
+library(skimr)
+library(plotly)
+library(tidyr)
+library(lubridate)
+library(rmarkdown)
+library(flexdashboard)
+library(DT)
+library(ggforce)
+```
+
+```{r Combining Excel Files Into One Data Set & Setting The Directory}
+setwd("C:/Users/hassa/Desktop/accidentdata")
+
+file.path <- "C:/Users/hassa/Desktop/accidentdata"
+list.files(pattern="csv")
+
+Distracted_Driver_Crashes <- read.csv("Distracted_Driver_Crashes.csv")
+Distracted_Driver_Crashes$type <- "Distracted_Driver_Crashes"
+DUI_Crashes <- read.csv("DUI_Crashes.csv")
+DUI_Crashes$type <- "DUI_Crashes"
+Fixed_Object_Crashes <- read.csv("Fixed_Object_Crashes.csv")
+Fixed_Object_Crashes$type <- "Fixed_Object_Crashes"
+Intersection_Crashes <- read.csv("Intersection_Crashes.csv")
+Intersection_Crashes$type <- "Intersection_Crashes"
+Motorcycle_Crashes <- read.csv("Motorcycle_Crashes.csv")
+Motorcycle_Crashes$type <- "Motorcycle_Crashes"
+Non_Motorist_Crashes <- read.csv("Non_Motorist_Crashes.csv")
+Non_Motorist_Crashes$type <- "Non_Motorist_Crashes"
+Older_Driver_Crashes <- read.csv("Older_Driver_Crashes.csv")
+Older_Driver_Crashes$type <- "Older_Driver_Crashes"
+Pedestrian_Crashes <- read.csv("Pedestrian_Crashes.csv")
+Pedestrian_Crashes$type <-"Pedestrian_Crashes"
+Unlicensed_Driver_Crashes <- read.csv("Unlicensed_Driver_Crashes.csv")
+Unlicensed_Driver_Crashes$type <- "Unlicensed_Driver_Crashes"
+Work_Zone_Crashes <- read.csv("Work_Zone_Crashes.csv")
+Work_Zone_Crashes$type <- "Work_Zone_Crashes"
+Wrong_Way_Crashes <- read.csv("Wrong_Way_Crashes.csv")
+Wrong_Way_Crashes$type <- "Wrong_Way_Crashes"
+Young_Driver_Crashes <- read.csv("Young_Driver_Crashes.csv")
+Young_Driver_Crashes$type <- "Young_Driver_Crashes"
+
+```
+
+```{r Joining Data Sets}
+data <- rbind(Distracted_Driver_Crashes,DUI_Crashes,Fixed_Object_Crashes,Intersection_Crashes,Motorcycle_Crashes,Non_Motorist_Crashes,Older_Driver_Crashes,Pedestrian_Crashes,Unlicensed_Driver_Crashes,Work_Zone_Crashes,Wrong_Way_Crashes,Young_Driver_Crashes)
+
+data <- data %>% pivot_wider( values_from = "type", names_from = "type", values_fill = "0")
+
+for (i in 36:47){
+  data[,i] <- if_else(data[,i] == colnames(data)[i], "Yes", "No")}
+
+table(data[,36:47])
+```
+
+```{r Inspecting The Data}
+#NA count of all
+table(is.na(data))
+```
+
+```{r Checking For Missing Values & Removing Them}
+#NA count Column wise
+sapply(data, function(x) sum(is.na(data)))
+
+#NA count Row wise
+rowSums(is.na(data))
+
+sum(is.na(data))
+mydata= na.omit(data)#remove all missing values
+```
+
+```{r Viewing Data}
+
+str(data)
+
+View(data)
+
+summary(data)
+
+colnames(data)
+
+nrow(data)
+
+```
+
+```{r Question #4 Answer}
+town <- data %>% filter(startsWith(CrashTownName, "T")) %>% 
+  group_by(CrashTownName) %>% summarise(count = n()) %>% top_n(1)
+
+town <- town$CrashTownName
+```
+
+```{r Question 5.1 Answer}
+Q_5.1<- data %>% filter(CrashTownName == town) %>% 
+  pivot_longer(cols = colnames(data[,36:47]), names_to = "type", values_to = "presence") %>%
+  filter(presence == "Yes") %>% group_by(type) %>% summarise(num_accidents = n()) %>% 
+  arrange(-num_accidents)
+```
+
+```{r Question 5.2 Answer}
+library(ggforce)
+Q_5.2 <- data %>% filter(CrashTownName == town) %>% 
+  pivot_longer(cols = colnames(data[,36:47]), names_to = "type", values_to = "presence") %>%
+  filter(presence == "Yes") %>%
+  group_by(type, WeatherConditionDesc,  SchoolBusRelatedDesc,  RouteClassDesc, LightConditionDesc, TrafficSurfaceConditionDesc, TrafficwayClassTypeDesc, TypeOfIntersectionDesc) %>%
+  summarise(Frequencies = n())
+
+sankey_data <- gather_set_data(Q_5.2, 1:8)
+
+colkey<- c("#C19AB7", "#9C95DC", "#228CDB", "#0B7189", "#D7263D","#EDAF97", "#5FAD41", "#FFBE0B")
+colkey <- factor(colkey)
+
+sankey_1 <- ggplot(sankey_data, aes(x, id = id, split = y, value = Frequencies)) +
+  geom_parallel_sets(aes(fill = type), 
+                     alpha = 1, axis.width = 0.1) +
+  geom_parallel_sets_axes(axis.width = 0.2, fill = "#2E1F27") + 
+  geom_parallel_sets_labels(size = 3, colour = "white", position = position_nudge(y = c(0.5,0.5,0.5))) +
+  scale_fill_manual(values = colkey) +
+  theme_void()
+```
+
+```{r Question 5.3: Severity Answer}
+Q_5.3 <- data %>% filter(CrashTownName == town) %>% 
+  pivot_longer(cols = colnames(data[,36:47]), names_to = "type", values_to = "presence") %>%
+  filter(presence == "Yes") %>% group_by(type, CrashSeverityDesc) %>% summarise(count = n()) %>%
+  arrange(type, -count)
+plot(Q_5.3)
+```
+
+```{r Question 5.4 Answer}
+Q_5.TIME <- data %>% filter(CrashTownName == town) %>%  group_by(CrashTimeHour) %>% 
+  summarise(count = n())
+
+Q_5.YEAR <- data %>% filter(CrashTownName == town) %>%  group_by(CrashDateYear) %>% 
+  summarise(count = n())
+
+Q_5.DAY <- data %>% filter(CrashTownName == town) %>%  group_by(DayofWeek) %>% 
+  summarise(count = n())
+
+Q_5.MONTH <- data %>% filter(CrashTownName == town) %>%  group_by(CrashDateMonth) %>% 
+  summarise(count = n())
+```
+
+```{r Loading More Packages}
+library(tidyverse)
+library(hrbrthemes)
+library(viridis)
+library(ggiraph)
+```
+
+```{r Question #6 Answer: GGPLOT  PLOTLY & FLEXDASHBOARD #1}
+#Q_5.TIME
+ggplot(Q_5.TIME,
+       aes(x= CrashTimeHour, y= count)) + geom_point(color= "Black", alpha = .9) + labs(x = "Crash Time Hour", y = "Count") + 
+  
+stat_smooth() +
+
+theme(panel.grid.major = element_line(size = .2, linetype = "dashed"),
+        panel.grid.minor = element_line(size = .2, linetype = "dotted"),
+        panel.grid.major.x = element_line(color = "red1"),
+        panel.grid.major.y = element_line(color = "blue1"),
+        panel.grid.minor.x = element_line(color = "red4"),
+        panel.grid.minor.y = element_line(color = "blue4"))+
+  ggtitle("Crash Time Hourly Count") 
+  
+  xlab("")
+```
+
+```{r Question #6 Answer: GGPLOT  PLOTLY & FLEXDASHBOARD #2}
+#Q_5.TIME
+ggplot(Q_5.TIME,
+       aes(x= CrashTimeHour, y=count)) +
+geom_point(color = "firebrick", shape = "diamond", size = 2)+ labs(x = "Crash Time Hour", y = "Count")+
+    geom_line(color = "firebrick", linetype = "dotted", size = .3) +
+  ggtitle("Crash Time Hourly Count")
+  
+  xlab("")
+```
+
+```{r Question #6 Answer: GGPLOT  PLOTLY & FLEXDASHBOARD #3}
+#Q_5.YEAR
+
+ggplot(Q_5.YEAR,
+       aes(x= CrashDateYear, y= count)) + geom_point() + labs(x = "Crash Date Year", y = "Count")+
+
+  geom_violin(draw_quantiles   = c(.25, .5, .75))+
+  geom_jitter(aes(y= count,
+                  x= CrashDateYear),
+              color="Purple",
+              height = 0,
+              width=0.5, alpha=100)+
+  
+ggtitle("Yearly Crash Count")
+xlab("")
+  
+```
+
+```{r Question #6 Answer: GGPLOT  PLOTLY & FLEXDASHBOARD #4}
+#Q_5.YEAR
+ggplot(Q_5.YEAR,
+       aes(x= CrashDateYear, y= count)) + geom_line() + labs(x = "Crash Date Year", y = "Count")+
+ggtitle("Yearly Crash Count")
+xlab("")
+```
+
+```{r Question #6 Answer: GGPLOT  PLOTLY & FLEXDASHBOARD #5}
+#Q_5.Day
+ggplot(Q_5.DAY,
+       aes(x= DayofWeek, y= count)) + geom_point()
+
+
+
+ggplot(aes(x= DayofWeek, 
+           y= count, 
+           color=DayofWeek), data = Q_5.DAY)+
+  geom_point()+
+  geom_smooth(method="lm", se=FALSE) + 
+  facet_grid(~DayofWeek + count)
+
+
+ggplot(aes(x= DayofWeek, 
+           y= count, 
+           color=DayofWeek), data = Q_5.DAY)+
+  geom_point()+
+  geom_smooth(method="lm", se=FALSE) + 
+  facet_wrap(~DayofWeek + count)
+```
+
+```{r Question #6 Answer: GGPLOT  PLOTLY & FLEXDASHBOARD #6}
+#Q_5.MONTH
+ggplot(Q_5.MONTH,
+       aes(x= CrashDateMonth, y =count)) +
+  geom_point(color = "firebrick", shape = "diamond", size = 2)+
+  ggtitle("Q_5MONTH Crash Date Month vs Q_5Month Count")+
+  xlab("CrashDateMonth")+
+  ylab("count")+
+  theme_minimal()
+```
